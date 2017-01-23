@@ -1,0 +1,162 @@
+---
+title: "Untitled"
+output: ioslides_presentation
+---
+
+```{r}
+library(ggplot2)
+```
+
+## Classes en R
+
+* __S3__ (very useful)
+* S4 (over engineered)
+* RC (similar to Ruby's or Python's class, but R6 is even closer)
+* __R6__ (very useful)
+* proto (simple prototype)
+* ggproto (similar to proto, used in ggplot)
+
+## S3
+
+```{r}
+x <- data.frame(t=1:10, x=rnorm(10))
+class(x)
+```
+
+```{r}
+class(x) <- c("series", class(x))
+class(x)
+```
+
+```{r}
+plot(x)
+```
+
+
+```{r}
+plot.series <- function(series) {
+  ggplot(series, aes(x=t, y=x)) + geom_line()
+}
+plot(x)
+```
+
+## New method
+
+```{r}
+average <- function(x) UseMethod("average")
+average.numeric <- function(x) mean(x)
+average(0:10)
+```
+
+```{r}
+average.series <- function(x) average.numeric(x$x)
+average(x)
+```
+
+## Double dispach
+
+```{r}
+add_to_series <- function(x, series) UseMethod("add_to_series")
+add_to_series.numeric <- function(numbers_added, series) {
+  df <- data.frame(t=series$t, x1=series$x, x2=numbers_added)
+  class(df) <- c("few_series", class(df))
+  df
+}
+xy <- add_to_series(runif(10), x)
+head(xy, 2)
+```
+
+```{r}
+add_to_series.series <- function(series_added, series) {
+  add_to_series.numeric(series_added$x, series)
+}
+y <- data.frame(t=1:10, x=runif(10))
+class(y) <- c("series", class(y))
+xy <- add_to_series(y, x)
+head(xy, 2)
+```
+
+## DD
+
+```{r}
+add_to_few_series.few_series <-
+  function(few_series_added, few_series) {
+    n <- dim(few_series)
+    add_to_series.numeric(series_added$x, series)
+  }
+```
+## Environments
+
+```{r}
+dict <- new.env()
+dict$a <- 1:5
+dict$a
+```
+
+```{r}
+dict[['d']] <- 20
+dict$d
+```
+```{r}
+assign('e', 40, envir=dict) 
+dict$e
+```
+
+
+
+## Hidden variables and "ls"
+
+```{r}
+dict$.a <- 100
+dict$.a
+```
+
+```{r}
+ls(dict)
+```
+
+
+```{r}
+ls(dict, all.names=TRUE)
+```
+
+
+## Extract values
+
+```{r}
+dict$a
+```
+
+
+```{r}
+dict[['a']]
+```
+
+```{r}
+get("a", dict)
+```
+
+## Parents
+
+```{r}
+dict2 <- new.env(parent=dict)
+dict2$a
+```
+
+```{r}
+get('a', dict2)
+```
+
+```{r}
+parent.env(dict2)
+dict
+```
+```{r}
+dict2$f <- function() {
+  print(environment())
+  print(parent.env(environment()))
+  
+}
+
+dict2$f()
+```
