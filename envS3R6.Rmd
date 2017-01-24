@@ -1,9 +1,9 @@
 ---
-title: "Untitled"
+title: "Advenced R: Envirionments and classes"
 output: ioslides_presentation
 ---
 
-```{r}
+```{r, include=FALSE}
 library(ggplot2)
 ```
 
@@ -11,9 +11,10 @@ library(ggplot2)
 
 * __S3__ (very useful)
 * S4 (over engineered)
-* RC (similar to Ruby's or Python's class, but R6 is even closer)
+* RC (similar to Ruby's or Python's class, but R6 has some nicer
+  features)
 * __R6__ (very useful)
-* proto (simple prototype)
+* proto (allows prototype-based programming)
 * ggproto (similar to proto, used in ggplot)
 
 ## S3
@@ -28,10 +29,13 @@ class(x) <- c("series", class(x))
 class(x)
 ```
 
+## S3
+
 ```{r}
 plot(x)
 ```
 
+## Method dispach
 
 ```{r}
 plot.series <- function(series) {
@@ -53,38 +57,103 @@ average.series <- function(x) average.numeric(x$x)
 average(x)
 ```
 
-## Double dispach
+## 
 
 ```{r}
-add_to_series <- function(x, series) UseMethod("add_to_series")
-add_to_series.numeric <- function(numbers_added, series) {
-  df <- data.frame(t=series$t, x1=series$x, x2=numbers_added)
+add_to_series <- function(x, y) UseMethod("add_to_series")
+add_to_series.series <- function(series_added, series) {
+  df <- data.frame(t=series$t, x1=series$x, x2=series_added$x)
   class(df) <- c("few_series", class(df))
   df
 }
-xy <- add_to_series(runif(10), x)
-head(xy, 2)
-```
-
-```{r}
-add_to_series.series <- function(series_added, series) {
-  add_to_series.numeric(series_added$x, series)
-}
 y <- data.frame(t=1:10, x=runif(10))
 class(y) <- c("series", class(y))
+
 xy <- add_to_series(y, x)
 head(xy, 2)
 ```
 
-## DD
+##
+
+```{r}
+add_to_few_series <- function(x, y) UseMethod("add_to_few_series")
+add_to_few_series.series <-
+  function(series_added, few_series) {
+    n <- dim(few_series)[2]
+    few_series[paste0("x", n)] <- series_added$x
+    few_series
+  }
+head(add_to_few_series(x, xy), 2)
+```
+##
 
 ```{r}
 add_to_few_series.few_series <-
   function(few_series_added, few_series) {
-    n <- dim(few_series)
-    add_to_series.numeric(series_added$x, series)
+    m <- dim(few_series_added)[2]
+    for (i in 1:(m-1)) {
+      few_series <- add_to_few_series.series(
+        data.frame(t=few_series_added$t,
+                   x=few_series_added[paste0("x", i)]),
+        few_series)
+    }
+    few_series
   }
+head(add_to_few_series(xy, xy), 2)
 ```
+
+##
+
+```{r}
+add_to_series.few_series <-
+  function(few_series_added, series) {
+    add_to_few_series.few_series(
+      few_series_added,
+      data.frame(t=series$t,
+                 x1=series$x))
+  }
+head(add_to_series(xy, x), 2)
+```
+## Double dispach
+
+We have defined 4 functions
+
+* add_to_series.series
+* add_to_series.few_series
+* add_to_few_series.series
+* add_to_few_series.few_series
+
+Now we define `+`:
+```{r}
+add <- function(x, y) UseMethod("add")
+add.series <- function(x, y) add_to_series(y, x)
+add.few_series <- function(x, y) add_to_few_series(y, x)
+```
+
+## 
+
+```{r}
+head(add(x, y), 2)
+```
+```{r}
+head(add(xy, x), 2)
+```
+```{r}
+head(add(xy, xy), 2)
+```
+
+##
+
+```{r}
+class(x) <- c("seriess", class(x))
+class(xy) <- c("seriess", class(xy))
+`+.seriess` <- function(x, y) add(x, y)
+head(x + x, 2)
+```
+```{r}
+head(xy + x, 2)
+```
+
 ## Environments
 
 ```{r}
@@ -159,4 +228,73 @@ dict2$f <- function() {
 }
 
 dict2$f()
+```
+
+## R6
+
+```{r}
+library(R6)
+
+Series6 <- R6Class(
+  "Series6",
+  public = list(
+    time = NULL,
+    x = NULL,
+    initialize = function(time = NULL, x = NULL) {
+      self$time <- time
+      self$x <- x
+    },
+    plot = function() {
+      df = data.frame(time=self$time, x=self$x)
+      ggplot(df, aes(time, x)) + geom_line()
+    }
+  )
+)
+```
+
+##
+
+```{r}
+x6 <- Series6$new(1:5, runif(5))
+x6$plot()
+```
+
+##
+
+```{r}
+plot.Series6 <- function(nx) {nx$plot()}
+plot(x6)
+```
+
+
+
+
+## Reactive Programming
+
+```{r}
+input <- new.env()
+output <- new.env()
+parent.env(output) <- input
+class(output) <- "reactive"
+
+`$.reactive` <- function(e, v) {
+  v_name <- as.character(substitute(v))
+  get(v_name, envir=e)()
+}
+
+reactive <- function(block) {
+  block_name <- as.character(substitute(block))[2]
+  function() eval(parse(text=block_name))
+}
+
+input$x <- 10
+input$y <- 20
+output$z <- reactive({input$x + input$y})
+output$z
+input$x <- 17
+output$z
+output$w <- reactive({output$z + input$y})
+output$w
+input$x <- 0
+output$w
 ```
