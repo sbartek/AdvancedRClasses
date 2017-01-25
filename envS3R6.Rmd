@@ -1,5 +1,6 @@
 ---
-title: "Advenced R: Envirionments and classes"
+title: "Advanced R: Environments and classes"
+author: "Bartek Skorulski"
 output: ioslides_presentation
 ---
 
