@@ -230,6 +230,23 @@ dict2$f <- function() {
 dict2$f()
 ```
 
+## Object generator
+
+```{r}
+objectGenerator <- function(fields=list()) {
+  self <- new.env()
+  print(fields)
+  for (fieldName in names(fields)) {
+    self[[fieldName]] <- fields[[fieldName]]
+  }
+  self
+}
+```
+
+```{r}
+objectGenerator(list(time = 1:6, x = runif(6) ))
+```
+
 ## R6
 
 ```{r}
@@ -269,7 +286,21 @@ plot(x6)
 
 
 
-## Reactive Programming
+## Reactive Programming (fake code)
+
+```
+x <- 2
+y <- 2 * x
+y
+```
+4
+```
+x <- 4
+y
+```
+8
+
+## Reactive Programming (real code)
 
 ```{r}
 input <- new.env()
@@ -286,13 +317,20 @@ reactive <- function(block) {
   block_name <- as.character(substitute(block))[2]
   function() eval(parse(text=block_name))
 }
+```
 
+##
+```{r}
 input$x <- 10
 input$y <- 20
 output$z <- reactive({input$x + input$y})
 output$z
 input$x <- 17
 output$z
+```
+
+##
+```{r}
 output$w <- reactive({output$z + input$y})
 output$w
 input$x <- 0
